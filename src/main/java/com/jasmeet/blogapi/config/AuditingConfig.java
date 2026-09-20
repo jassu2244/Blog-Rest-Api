@@ -1,6 +1,6 @@
-package com.sopromadze.blogapi.config;
+package com.jasmeet.blogapi.config;
 
-import com.sopromadze.blogapi.security.UserPrincipal;
+import com.jasmeet.blogapi.security.UserPrincipal;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.AuditorAware;

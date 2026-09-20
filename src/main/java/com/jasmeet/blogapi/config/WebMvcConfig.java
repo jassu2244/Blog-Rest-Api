@@ -1,4 +1,4 @@
-package com.sopromadze.blogapi.config;
+package com.jasmeet.blogapi.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;

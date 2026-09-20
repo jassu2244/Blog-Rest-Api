@@ -1,72 +1,113 @@
-package com.sopromadze.blogapi.config;
+package com.jasmeet.blogapi.config;
 
-import com.sopromadze.blogapi.repository.UserRepository;
-import com.sopromadze.blogapi.security.JwtAuthenticationEntryPoint;
-import com.sopromadze.blogapi.security.JwtAuthenticationFilter;
-import com.sopromadze.blogapi.service.impl.CustomUserDetailsServiceImpl;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.jasmeet.blogapi.security.JwtAuthenticationEntryPoint;
+import com.jasmeet.blogapi.security.JwtAuthenticationFilter;
+import com.jasmeet.blogapi.service.impl.CustomUserDetailsServiceImpl;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.BeanIds;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
-@EnableGlobalMethodSecurity(
+@EnableMethodSecurity(
 		securedEnabled = true,
-		jsr250Enabled = true,
-		prePostEnabled = true)
-public class SecutiryConfig extends WebSecurityConfigurerAdapter {
+		jsr250Enabled = true
+)
+public class SecurityConfig {
+
 	private final CustomUserDetailsServiceImpl customUserDetailsService;
 	private final JwtAuthenticationEntryPoint unauthorizedHandler;
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-	@Autowired
-	public SecutiryConfig(UserRepository userRepository, CustomUserDetailsServiceImpl customUserDetailsService,
-			JwtAuthenticationEntryPoint unauthorizedHandler, JwtAuthenticationFilter jwtAuthenticationFilter) {
+	public SecurityConfig(
+			CustomUserDetailsServiceImpl customUserDetailsService,
+			JwtAuthenticationEntryPoint unauthorizedHandler,
+			JwtAuthenticationFilter jwtAuthenticationFilter) {
+
 		this.customUserDetailsService = customUserDetailsService;
 		this.unauthorizedHandler = unauthorizedHandler;
 		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
 	}
 
-	@Override
-	protected void configure(HttpSecurity http) throws Exception {
+	@Bean
+	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-		http.cors().and().csrf().disable()
-				.exceptionHandling()
-				.authenticationEntryPoint(unauthorizedHandler)
-				.and()
-				.sessionManagement()
-				.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-				.and()
-				.authorizeRequests()
-				.antMatchers(HttpMethod.GET, "/api/**").permitAll()
-				.antMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
-				.antMatchers(HttpMethod.GET, "/api/users/checkUsernameAvailability", "/api/users/checkEmailAvailability").permitAll()
-				.anyRequest().authenticated();
+		http
+				.cors(cors -> {})
+				.csrf(csrf -> csrf.disable())
 
-		http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+				.exceptionHandling(exception -> exception
+						.authenticationEntryPoint(unauthorizedHandler)
+				)
 
+				.sessionManagement(session -> session
+						.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+				)
+
+				.authorizeHttpRequests(auth -> auth
+
+						// Allow all GET requests
+						.requestMatchers(HttpMethod.GET, "/api/**")
+						.permitAll()
+
+						// Authentication endpoints
+						.requestMatchers(HttpMethod.POST, "/api/auth/**")
+						.permitAll()
+
+						// Username/email availability
+						.requestMatchers(
+								HttpMethod.GET,
+								"/api/users/checkUsernameAvailability",
+								"/api/users/checkEmailAvailability"
+						)
+						.permitAll()
+
+						// Everything else requires authentication
+						.anyRequest()
+						.authenticated()
+				);
+
+		// JWT filter
+		http.addFilterBefore(
+				jwtAuthenticationFilter,
+				UsernamePasswordAuthenticationFilter.class
+		);
+
+		return http.build();
 	}
 
-	public void configure(AuthenticationManagerBuilder authenticationManagerBuilder) throws Exception {
-		authenticationManagerBuilder.userDetailsService(customUserDetailsService)
-				.passwordEncoder(passwordEncoder());
+	@Bean
+	public DaoAuthenticationProvider authenticationProvider() {
+
+		DaoAuthenticationProvider provider =
+				new DaoAuthenticationProvider();
+
+		provider.setUserDetailsService(customUserDetailsService);
+		provider.setPasswordEncoder(passwordEncoder());
+
+		return provider;
 	}
 
-	@Bean(BeanIds.AUTHENTICATION_MANAGER)
-	public AuthenticationManager authenticationManagerBean() throws Exception {
-		return super.authenticationManagerBean();
+	@Bean
+	public AuthenticationManager authenticationManager(
+			AuthenticationConfiguration configuration) throws Exception {
+
+		return configuration.getAuthenticationManager();
 	}
 
 	@Bean
