@@ -90,7 +90,7 @@ public class Company extends UserDateAudit {
 	@JsonIgnore
 	@Override
 	public void setCreatedAt(Instant createdAt) {
-		super.setCreatedAt(updatedBy);
+		super.setCreatedAt(createdAt);
 	}
 
 	@JsonIgnore
